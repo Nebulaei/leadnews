@@ -19,6 +19,7 @@ import com.heima.utils.common.UserThreadLocal;
 import com.heima.wemedia.mapper.WmMaterialMapper;
 import com.heima.wemedia.mapper.WmNewsMapper;
 import com.heima.wemedia.mapper.WmNewsMaterialMapper;
+import com.heima.wemedia.service.WmNewsReviewService;
 import com.heima.wemedia.service.WmNewsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -38,6 +39,8 @@ public class WmNewsServiceImpl extends ServiceImpl<WmNewsMapper, WmNews> impleme
     private WmMaterialMapper wmMaterialMapper;
     @Autowired
     private WmNewsMaterialMapper wmNewsMaterialMapper;
+    @Autowired
+    private WmNewsReviewService wmNewsReviewService;
 
     @Override
     public ResponseResult findAll(WmNewsPageReqDto dto) {
@@ -92,18 +95,21 @@ public class WmNewsServiceImpl extends ServiceImpl<WmNewsMapper, WmNews> impleme
             return ResponseResult.errorResult(AppHttpCodeEnum.PARAM_INVALID);
         }
         // 保存文章
-        List<String> contentImages = getImagesFromNews(dto);
+        List<String> contentImages = getImagesFromContent(dto);
         WmNews news = saveOrUpdate(dto, contentImages);
-        // 为草稿不保存
+        // 保存为草稿时直接返回
         if (dto.getStatus() == WmNews.Status.NORMAL.getCode()) {
             return ResponseResult.okResult(AppHttpCodeEnum.SUCCESS);
         }
-        //保存内容素材和文章的关联关系
+        // 保存内容素材和文章的关联关系
         saveRelations(news.getId(), contentImages, WemediaConstants.REFERENCE_TYPE_CONTENT);
-        //保存封面素材和文章的关联关系
+        // 保存封面素材和文章的关联关系
         String images = news.getImages();
-        List<String> coverImages = Arrays.asList(images.split(","));
+        List<String> coverImages = images.isEmpty() ? new ArrayList<>()
+                : Arrays.asList(images.split(","));
         saveRelations(news.getId(), coverImages, WemediaConstants.REFERENCE_TYPE_COVER);
+        // 审核文章内容
+        wmNewsReviewService.review(news, contentImages);
 
         return ResponseResult.okResult(AppHttpCodeEnum.SUCCESS);
     }
@@ -152,7 +158,7 @@ public class WmNewsServiceImpl extends ServiceImpl<WmNewsMapper, WmNews> impleme
         return images;
     }
 
-    public List<String> getImagesFromNews(WmNewsDto dto) {
+    public List<String> getImagesFromContent(WmNewsDto dto) {
         // 获取文章中的图片素材
         List<String> images = new ArrayList<>();
         String content = dto.getContent();
@@ -163,25 +169,27 @@ public class WmNewsServiceImpl extends ServiceImpl<WmNewsMapper, WmNews> impleme
         }
 
         for (Map map : contentMap) {
-            String type = map.get("type").toString();
+            String type = map.get("type") + "";
             if ("image".equals(type)) {
-                images.add(map.get("value").toString());
+                images.add(map.get("value") + "");
             }
         }
         return images;
     }
 
-    private void saveRelations(int newsId, List<String> contentImages, short referenceType) {
+    private void saveRelations(int newsId, List<String> images, short referenceType) {
+        System.out.println(images);
         // 保存素材与文章的关联关系
-        if (CollectionUtils.isEmpty(contentImages)) {
+        if (CollectionUtils.isEmpty(images) || images.isEmpty()) {
             log.info("没有图片");
             return;
         }
         LambdaQueryWrapper<WmMaterial> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(WmMaterial::getUrl, contentImages);
+        wrapper.in(WmMaterial::getUrl, images);
 
         List<WmMaterial> materialList = wmMaterialMapper.selectList(wrapper);
         List<Integer> materialIds = materialList.stream().map(WmMaterial::getId).collect(Collectors.toList());
+
         wmNewsMaterialMapper.saveRelations(materialIds, newsId, referenceType);
     }
 }

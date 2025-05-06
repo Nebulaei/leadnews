@@ -2,6 +2,7 @@ package com.heima.article.controller.v1;
 
 import com.heima.article.service.ApArticleService;
 import com.heima.common.constants.ApArticleConstants;
+import com.heima.model.article.dtos.ArticleDto;
 import com.heima.model.article.dtos.ArticleHomeDto;
 import com.heima.model.common.dtos.ResponseResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,5 +31,10 @@ public class ArticleHomeController {
     @PostMapping("/loadnew")
     public ResponseResult loadNew(@RequestBody ArticleHomeDto dto) {
         return apArticleService.load(dto, ApArticleConstants.LOAD_NEW);
+    }
+
+    @PostMapping("/save")
+    public ResponseResult save(@RequestBody ArticleDto dto) {
+        return apArticleService.save(dto);
     }
 }
