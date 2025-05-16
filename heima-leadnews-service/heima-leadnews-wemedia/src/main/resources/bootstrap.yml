@@ -23,3 +23,16 @@ feign:
       default:
         connect-timeout: 2000
         read-timeout: 2000
+seata:
+  registry:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      namespace: ""
+      group: DEFAULT_GROUP
+      application: seata
+  tx-service-group: seata-auto-scan-news-tx
+  service:
+    vgroup-mapping:
+      seata-auto-scan-news-tx: default
+  data-source-proxy-mode: AT

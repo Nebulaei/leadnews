@@ -9,4 +9,6 @@ public class WemediaConstants {
 
     public static final short REFERENCE_TYPE_CONTENT = 0;
     public static final short REFERENCE_TYPE_COVER = 1;
+
+    public static final String WM_NEWS_SHELF_TOPIC="wm.news.shelf.topic";
 }
